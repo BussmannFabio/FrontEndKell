@@ -1,0 +1,97 @@
+# Documentação Técnica do Sistema ERP (Kell)
+
+Esta documentação fornece uma visão geral e técnica da arquitetura implementada nos projetos **BackEndKell** e **FrontEndKell**. O sistema consiste em uma solução estilo ERP focada no gerenciamento de estoque, produção (ordens de serviço/confecção), expedição (cargas) e fluxo financeiro.
+
+---
+
+## 1. Visão Geral da Arquitetura
+
+O sistema adota uma arquitetura cliente-servidor padrão:
+- **Backend (API RESTful)**: Desenvolvido em Node.js, responsável pela lógica de negócios, acesso ao banco de dados e autenticação.
+- **Frontend (SPA - Single Page Application)**: Desenvolvido em Angular, responsável pela interface do usuário e interação com a API.
+- **Banco de Dados**: PostgreSQL, acessado via ORM (Object-Relational Mapping).
+
+---
+
+## 2. Backend (`BackEndKell`)
+
+O backend foi construído estruturalmente utilizando o padrão **MVC (Model-View-Controller)** adaptado para APIs (sem a camada de View).
+
+### 2.1 Tecnologias e Bibliotecas
+- **Plataforma**: Node.js
+- **Framework Web**: Express.js
+- **Banco de Dados**: PostgreSQL com ORM **Sequelize**
+- **Autenticação**: JSON Web Tokens (JWT) e `bcrypt/bcryptjs` para criptografia de senhas
+- **Utilitários**: `cors` (para controle de acesso), `dotenv` (para variáveis de ambiente)
+
+### 2.2 Estrutura de Diretórios (`src/`)
+- `/config`: Configurações do banco de dados e outras integrações.
+- `/controllers`: Contém a lógica de negócio de cada rota (processamento de requisições e respostas).
+- `/middlewares`: Funções interceptadoras, principalmente para validação de tokens JWT (Autenticação) e outras regras de negócio.
+- `/models`: Definição das tabelas do banco de dados (Schemas do Sequelize) e seus relacionamentos.
+- `/routes`: Registro das rotas (endpoints) da API e mapeamento para os mapeados controladores.
+
+### 2.3 Principais Entidades e Domínios
+O sistema abrange as seguintes áreas de negócio, espelhadas em seus modelos de banco de dados:
+- **Controle de Estoque & Materiais**:
+  - `EstoqueProduto`, `EstoqueMaterial`, `estoqueSP`
+  - `movimentacaoMaterial` (Registro de entradas e saídas)
+- **Produção e Ordens de Serviço (OS)**:
+  - `ordemServico`, `ordemItem`
+  - `confeccao` (Processo de fabricação)
+- **Logística e Expedição**:
+  - `carga`, `cargaItem`
+  - `valeMaterial`, `valepedidoSp`, `valePedidoItemSp`
+- **Cadastros Base**:
+  - `produto`, `produtoTamanho`, `material`
+- **Atores (Usuários)**:
+  - `cliente`, `vendedor`, `user`, `role` (Controle de acesso e papéis)
+- **Módulo Financeiro**:
+  - `financeiro` (Controle de receitas, despesas ou comissões)
+- **Auditoria**:
+  - `audit` (Rastreabilidade de ações críticas)
+
+---
+
+## 3. Frontend (`FrontEndKell / frontend-backend-kell`)
+
+O client-side é uma aplicação web rica e responsiva, que consome as informações fornecidas pela API do Backend.
+
+### 3.1 Tecnologias e Bibliotecas
+- **Framework Core**: Angular 20 (utilizando TypeScript)
+- **Estilização**: SCSS (`styles.scss`) e componentes estruturais do Angular.
+- **Gerenciamento de Estado/Fluxo**: RxJS
+- **Geração de Relatórios**: `jspdf` e `html2canvas` (exportação de dados, PDFs de ordens).
+- **Autenticação**: Controle de rotas local via manipulação de JWT (`jwt-decode`).
+
+### 3.2 Estrutura de Diretórios (`src/app/`)
+- `/components`: Agrupa telas e componentes modulares da aplicação.
+- `/services`: Classes responsáveis pela comunicação direta com a API REST HTTP. Serviços embutem a regra de aquisição de dados.
+- `app.routes.ts`: Arquivo centralizador das rotas de telas do front-end.
+- `auth.guard.ts` & `auth.interceptor.ts`: Garantem que apenas usuários autenticados acessem rotas protegidas e injetam o token JWT no cabeçalho (*Header*) de todas as requisições API.
+
+### 3.3 Principais Módulos de Interface (Componentes)
+A interface de usuário foi dividida para refletir os processos operacionais do sistema:
+- **Área Administrativa/Login**: `/login`
+- **Gestão de Pessoas**: `/cliente-lista`, `/vendedor-lista`
+- **Gestão de Cadastros**: `/cadastro-produto`, `/cadastro-materiais`
+- **Gestão de Estoque**: Hub de controle local e de envio.
+  - `/estoque`, `/estoque-sp`
+  - `/envio-materiais` (Movimentações)
+- **Ordens de Serviço (Produção)**: Fluxo completo da OS.
+  - `/criacao-os` (Abertura/Geração)
+  - `/retorno-os` (Controle de conclusão)
+  - `/relatorio-os` (Demonstrativos e impressão com jsPDF)
+- **Gestão de Confecção**: `/cadastro-confeccao`
+- **Logística e Expedição**: `/cargas`, `/vale-pedido-sp`
+- **Setor Financeiro**: `/financeiro`
+
+---
+
+## 4. Fluxo de Comunicação e Segurança
+
+1. **Autenticação (Login)**: O usuário insere as credenciais na tela de login (Frontend Component). O Angular Service envia um POST à rota de autenticação do Backend.
+2. **Geração de Token**: O Backend valida as credenciais contra a identidade no banco de dados e retorna um token JWT.
+3. **Persistência e Guardas**: O Angular armazena o token e libera o acesso às telas bloqueadas (`auth.guard.ts`).
+4. **Requisições Padrão**: Toda interação subsequente ao Backend passa pelo `auth.interceptor.ts`, inserindo o token.
+5. **Acesso aos Dados**: O Backend valida o token via Middleware. Se autêntico, os Controllers e Models buscam (ou alteram) a informação através do Sequelize/BD, e devolvem o resultado em formato JSON para exibição final na tela.
