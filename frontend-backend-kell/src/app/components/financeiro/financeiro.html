@@ -1,0 +1,140 @@
+<div class="financeiro-root">
+  <header class="dashboard-header">
+    <div class="title-wrapper">
+      <h1><i class="icon">💰</i> Controle Financeiro de Oficinas</h1>
+      <p class="subtitle">Gestão de pagamentos, auditoria de M.O. e fechamento de lotes</p>
+    </div>
+
+    <div class="filter-card">
+      <div class="filter-row">
+        <div class="field">
+          <label>Período Inicial</label>
+          <input type="date" [(ngModel)]="filterFrom" class="input-modern" />
+        </div>
+        <div class="field">
+          <label>Período Final</label>
+          <input type="date" [(ngModel)]="filterTo" class="input-modern" />
+        </div>
+        <div class="filter-actions">
+          <button (click)="applyDateFilter()" [disabled]="loading" class="btn-primary">Filtrar</button>
+          <button (click)="clearFilter()" [disabled]="loading" class="btn-outline">Limpar</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="quick-actions">
+    <button (click)="carregar()" [disabled]="loading" class="btn-refresh">
+      <span>🔄</span> Atualizar Dados
+    </button>
+    
+    <button (click)="gerarRelatorioSelecionados()" 
+            [disabled]="selectedOrdemIds.size === 0 || loading"
+            class="btn-audit" [class.active]="selectedOrdemIds.size > 0">
+      <span>📑</span> Analisar Auditoria <strong>({{ selectedOrdemIds.size }})</strong>
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="state-alert info">⌛ Processando informações do servidor...</div>
+  <div *ngIf="error" class="state-alert danger">⚠️ {{ error }}</div>
+  <div *ngIf="!loading && filteredRegistros.length === 0" class="state-alert warning">
+    Nenhum lançamento encontrado para os filtros selecionados.
+  </div>
+
+  <div *ngIf="paginatedRegistros.length > 0" class="main-card table-card shadow">
+    <div class="table-responsive">
+      <table class="finance-table">
+        <thead>
+          <tr>
+            <th class="col-check">
+              <input type="checkbox" [checked]="allSelected()" [indeterminate]="someSelected()" (change)="toggleSelectAll($event)" />
+            </th>
+            <th>CÓDIGO OS</th>
+            <th>OFICINA / CONFECÇÃO</th>
+            <th class="text-right">VALOR M.O.</th>
+            <th>SITUAÇÃO</th>
+            <th>DATA LANÇAMENTO</th>
+            <th class="text-center">AÇÃO PAGO</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of paginatedRegistros" [class.row-selected]="isSelected(r)">
+            <td class="col-check">
+              <input type="checkbox" [checked]="isSelected(r)" (change)="toggleSelecionar(r, $event)" />
+            </td>
+            <td class="os-code">#{{ r.ordemId }}</td>
+            <td class="conf-name">{{ r.confeccaoNome ?? ('ID: ' + r.confeccaoId) }}</td>
+            <td class="text-right val-mo">{{ formatCurrency(r.valorMaoDeObra) }}</td>
+            <td>
+              <span class="badge" [ngClass]="{'badge-open': r.status==='ABERTO','badge-paid': r.status==='PAGO'}">
+                {{ r.status }}
+              </span>
+            </td>
+            <td class="text-muted">{{ formatDate(r.dataLancamento) }}</td>
+            <td class="text-center">
+              <label class="switch-container">
+                <input type="checkbox" [checked]="r.status==='PAGO'" [disabled]="updatingId===r.id" (change)="confirmToggleStatus(r, $event)" />
+                <span class="switch-slider"></span>
+              </label>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="pagination-bar">
+      <div class="page-info">Página <strong>{{ page }}</strong> de {{ totalPages }}</div>
+      <div class="page-nav">
+        <button (click)="prevPage()" [disabled]="page === 1">Anterior</button>
+        <button (click)="nextPage()" [disabled]="page === totalPages">Próxima</button>
+      </div>
+    </footer>
+  </div>
+
+  <div *ngIf="report.length > 0" class="report-section mt-5">
+    <div class="report-card">
+      <header class="report-header">
+        <h3>RELATÓRIO DE FECHAMENTO FINANCEIRO</h3>
+        <p>Resumo de Auditoria para Pagamento de Lote</p>
+      </header>
+      
+      <div class="report-body">
+        <table class="report-summary-table">
+          <thead>
+            <tr>
+              <th>OFICINA</th>
+              <th class="text-right">TOTAL PEÇAS</th>
+              <th class="text-right">DÚZIAS</th>
+              <th class="text-right">VALOR TOTAL</th>
+              <th class="text-right">QTD ORDENS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let g of report">
+              <td><strong>{{ g.confeccaoNome }}</strong></td>
+              <td class="text-right">{{ g.totalPecasProduzidas }}</td>
+              <td class="text-right">{{ g.totalDuzias | number:'1.2-2' }}</td>
+              <td class="text-right font-bold">{{ formatCurrency(g.totalValor) }}</td>
+              <td class="text-right">{{ g.ordensCount }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td>TOTAIS DO LOTE SELECIONADO</td>
+              <td class="text-right">{{ totalPecas() }}</td>
+              <td class="text-right">{{ totalDuzias() | number:'1.2-2' }}</td>
+              <td class="text-right total-final">{{ totalValor() }}</td>
+              <td class="text-right">{{ totalOrdens() }}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="report-print-zone">
+          <button (click)="baixarPdf()" class="btn-print">
+            🖨️ Gerar Guia de Pagamento (PDF)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

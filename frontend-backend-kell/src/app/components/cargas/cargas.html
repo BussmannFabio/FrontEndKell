@@ -1,0 +1,112 @@
+<section class="cargas-wrapper">
+  <h2>Registrar Nova Carga</h2>
+
+  <!-- Mensagens -->
+  <div *ngIf="mensagem" class="toast success">{{ mensagem }}</div>
+  <div *ngIf="mensagemErro" class="toast error">{{ mensagemErro }}</div>
+
+  <!-- Loading produtos -->
+  <div *ngIf="carregandoProdutos" class="loading">Carregando produtos...</div>
+
+  <!-- Formulário -->
+  <form *ngIf="form" [formGroup]="form" (ngSubmit)="enviar()" class="form-container" novalidate>
+    <div class="form-header">
+      <label class="label-data">Data da Carga</label>
+      <input type="date" formControlName="data" />
+      <div class="total-display">Total: <strong>{{ quantidadeTotal }}</strong></div>
+    </div>
+
+    <div class="produtos-grid">
+      <ng-container *ngFor="let p of produtosComItens">
+        <div class="produto-card">
+          <div class="produto-titulo">
+            <div class="codigo">{{ p.produto.codigo }}</div>
+            <div class="nome">{{ p.produto.nome || 'Sem nome' }}</div>
+          </div>
+
+          <div class="tamanhos-wrapper">
+            <ng-container *ngFor="let ctrl of p.controles">
+              <div class="tamanho-box" [formGroup]="ctrl">
+                <label class="tamanho-label">{{ ctrl.get('tamanho')?.value }}</label>
+                <input class="qtd-input" type="number" formControlName="quantidade" min="0" />
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
+    <div class="actions-row">
+      <button type="submit" class="btn-enviar" [disabled]="!canSubmit()">Registrar Carga</button>
+    </div>
+  </form>
+
+  <hr />
+
+  <h2>Cargas Registradas</h2>
+
+  <!-- Loading cargas -->
+  <div *ngIf="carregandoCargas" class="loading">Carregando cargas...</div>
+
+  <div *ngIf="!carregandoCargas && cargas.length === 0" class="no-data">
+    Nenhuma carga registrada.
+  </div>
+
+  <div *ngIf="!carregandoCargas && cargas.length > 0" class="table-wrapper">
+    <table class="cargas-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data</th>
+          <th>Total</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let c of cargas | slice:(page-1)*pageSize:page*pageSize">
+          <tr>
+            <td>{{ c.id }}</td>
+            <td>{{ c.dataDisplay }}</td>
+            <td class="total-cell">{{ c.quantidadeTotal }}</td>
+            <td class="acoes-cell">
+              <button class="btn small btn-delete" (click)="deletar(c.id)">Deletar</button>
+              <button class="btn small" (click)="toggleCargaItens(c.id)">
+                {{ selectedCargaId === c.id ? 'Ocultar Itens' : 'Ver Itens' }}
+              </button>
+              <button class="btn small" (click)="gerarRelatorio(c)">Gerar Relatório</button>
+            </td>
+          </tr>
+
+          <tr *ngIf="selectedCargaId === c.id">
+            <td colspan="4" class="carga-itens-container">
+              <div class="carga-itens-wrapper">
+                <table class="itens-table">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Tamanho</th>
+                      <th>Quantidade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let item of c.itens">
+                      <td>{{ item.produtoCodigo || '-' }}</td>
+                      <td>{{ item.tamanho || '-' }}</td>
+                      <td class="qtd-right">{{ item.quantidade }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <button (click)="paginaAnterior()" [disabled]="page === 1">Anterior</button>
+      <span>Página {{ page }}</span>
+      <button (click)="proximaPagina()" [disabled]="page * pageSize >= totalCargas">Próxima</button>
+    </div>
+  </div>
+</section>

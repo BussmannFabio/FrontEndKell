@@ -1,0 +1,129 @@
+<div class="retorno-container">
+  <header class="main-header">
+    <div class="title-group">
+      <h1><i class="icon">🔄</i> Retorno e Fechamento</h1>
+      <p class="subtitle">Entrada parcial de produção ou encerramento de OS</p>
+    </div>
+    <div class="search-box">
+      <input type="number" [formControl]="osIdControl" placeholder="Número da OS" (keyup.enter)="buscarOS()" />
+      <button class="btn-search" (click)="buscarOS()" [disabled]="loadingBusca">
+        <span *ngIf="!loadingBusca">🔍 BUSCAR</span>
+        <span *ngIf="loadingBusca">⌛</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="main-content">
+    <div class="panel-list">
+      <div class="panel-header">
+        <h3>📋 Ordens de Serviço</h3>
+        <span class="badge-count">{{ ordensAbertas.length }} registros</span>
+      </div>
+      
+      <div class="table-responsive">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>OS</th>
+              <th>Oficina/Confecção</th>
+              <th>Data Início</th>
+              <th>Status</th>
+              <th>Pendências</th>
+              <th class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let os of ordensPaginadas; trackBy: trackById" 
+                [class.row-selected]="form?.get('id')?.value === os.id">
+              <td><strong>#{{ os.id }}</strong></td>
+              <td>{{ getConfeccaoName(os.confeccaoId) }}</td>
+              <td>{{ os.dataInicio | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <span [class]="os.status === 'RETORNADA' ? 'status-badge ret' : 'status-badge open'">
+                  {{ os.status }}
+                </span>
+              </td>
+              <td class="text-muted">{{ resumoItens(os) }}</td>
+              <td class="text-center">
+                <button class="btn-action select" (click)="selecionarOS(os.id)">Selecionar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination-bar" *ngIf="totalPages > 1">
+        <button (click)="prevPage()" [disabled]="currentPage === 1">Anterior</button>
+        <span>Página <strong>{{ currentPage }}</strong> de {{ totalPages }}</span>
+        <button (click)="nextPage()" [disabled]="currentPage === totalPages">Próxima</button>
+      </div>
+    </div>
+
+    <div *ngIf="form" [formGroup]="form" class="return-form-panel">
+      <div class="form-header">
+        <div class="os-info">
+          <h2>Retorno OS #{{ form.get('id')?.value }}</h2>
+          <span class="confeccao-tag">{{ getConfeccaoName(form.get('confeccaoId')?.value) }}</span>
+        </div>
+        <div class="global-actions">
+          <label class="toggle-total">
+            <input type="checkbox" [formControl]="retornoTotalControl"/>
+            <span class="label-text">COMPLETAR TUDO</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="items-grid" formArrayName="itens">
+        <div *ngFor="let ctrl of itens.controls; let i = index" [formGroupName]="i" class="item-card">
+          <div class="item-card-header">
+            <div class="prod-info">
+              <span class="sku">{{ getProdutoCodigo(ctrl.get('produtoId')?.value) }}</span>
+              <span class="size" *ngIf="ctrl.get('tamanho')?.value">{{ ctrl.get('tamanho')?.value }}</span>
+            </div>
+            <div class="pending-badge">
+              Total OS: {{ ctrl.get('pecasEsperadas')?.value }}
+            </div>
+          </div>
+
+          <div class="item-card-body">
+            <div class="info-row">
+              <span><strong>Já Entregue:</strong> {{ ctrl.get('pecasReaisAcumuladas')?.value }}</span>
+              <span><strong>Aguardando:</strong> {{ (ctrl.get('pecasEsperadas')?.value - ctrl.get('pecasReaisAcumuladas')?.value) }}</span>
+            </div>
+
+            <div class="input-container">
+              <div class="field">
+                <label>Voltou Agora</label>
+                <input type="number" formControlName="pecasRetornadas" (blur)="normalizePecasRetornadas(getControl(i))">
+              </div>
+              <div class="field">
+                <label>Defeito (M.O.)</label>
+                <input type="number" formControlName="pecasComDefeito" (blur)="normalizePecasComDefeito(getControl(i))">
+              </div>
+              <div class="field result">
+                <label>Líquido</label>
+                <div class="estocar-val">{{ calcBomRetorno(i) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <div class="left">
+          <button class="btn-cancel" type="button" (click)="confirmExcluir()" [disabled]="submitting">EXCLUIR OS</button>
+        </div>
+        <div class="right">
+          <button class="btn-partial" type="button" (click)="salvarParcial()" [disabled]="!podeRetornar() || submitting">
+            💾 RETORNO PARCIAL (STANDBY)
+          </button>
+          
+          <button class="btn-submit" type="button" (click)="confirmRetornar()" [disabled]="!podeRetornar() || submitting">
+            <span *ngIf="!submitting">🏁 FINALIZAR E FECHAR FOLHA</span>
+            <span *ngIf="submitting">AGUARDE...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

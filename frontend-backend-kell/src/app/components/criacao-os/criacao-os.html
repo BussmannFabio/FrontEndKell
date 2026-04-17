@@ -1,0 +1,129 @@
+<div class="container">
+  <h2>Painel de Ordens de Serviço</h2>
+
+  <form [formGroup]="form" (ngSubmit)="salvarOS()" class="main-card">
+    <h3>Nova Ordem de Serviço</h3>
+    <div class="form-group">
+      <label>Oficina:</label>
+      <select formControlName="confeccaoId">
+        <option value="">Selecione a oficina</option>
+        <option *ngFor="let c of confeccoes" [value]="c.id">{{ c.nome }}</option>
+      </select>
+    </div>
+
+    <div class="date-row">
+      <div class="form-group" style="flex: 1;">
+        <label>Data Início:</label>
+        <input type="date" formControlName="dataInicio" />
+      </div>
+      <div class="form-group" style="flex: 1;">
+        <label>Data Retorno (opcional):</label>
+        <input type="date" formControlName="dataRetorno" />
+      </div>
+    </div>
+
+    <hr />
+    <h4>Produtos e Grupos de Corte</h4>
+
+    <div formArrayName="itens">
+      <div class="item-card" *ngFor="let item of itens.controls; let i=index" [formGroupName]="i">
+        <div class="product-header">
+          <div class="input-wrapper" style="margin-bottom: 0; flex: 1; margin-right: 15px;">
+            <label>Código do Produto:</label>
+            <input placeholder="Ex: 202" formControlName="produtoCodigo" type="text" />
+          </div>
+          <button type="button" class="btn-remove" (click)="removerItem(i)">Remover Produto</button>
+        </div>
+
+        <div formArrayName="grupos" style="margin-top: 15px;">
+          <div class="grupo-corte-card" *ngFor="let grupo of getGrupos(i).controls; let g=index" [formGroupName]="g">
+
+            <div class="grupo-inputs">
+              <div class="input-wrapper" style="flex: 1;">
+                <label>Número do Corte:</label>
+                <input placeholder="Ex: 0001" formControlName="corte" type="text" />
+              </div>
+              <div class="input-wrapper" style="flex: 1;">
+                <label>Peças por Volume:</label>
+                <input type="number" formControlName="pecasPorVolume" (input)="atualizarCalculos(i, g)" />
+              </div>
+              <button type="button" class="btn-remove-small" (click)="removerGrupo(i, g)"
+                *ngIf="getGrupos(i).length > 1">
+                Excluir Corte
+              </button>
+            </div>
+
+            <div formArrayName="tamanhos" class="tamanhos-grid">
+              <div class="tamanho-mini-card" *ngFor="let t of getTamanhos(i, g).controls; let j=index"
+                [formGroupName]="j">
+                <label>Tam: {{ t.get('tamanho')?.value }}</label>
+                <input type="number" formControlName="volumes" placeholder="Vols" (input)="atualizarCalculos(i, g)" />
+                <span class="calc-label">= {{ t.get('pecasEsperadas')?.value }} pçs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-add-grupo" (click)="adicionarGrupo(i)">
+          + Adicionar Outro Corte para este Produto
+        </button>
+      </div>
+    </div>
+
+    <button type="button" class="btn-add" (click)="adicionarItem()">Adicionar Novo Produto</button>
+    <button type="submit" class="btn-submit" [disabled]="form.invalid">Salvar Ordem de Serviço</button>
+  </form>
+
+  <section class="search-panel">
+    <h3>Buscar Ordens de Serviço</h3>
+    <div class="search-row">
+      <input placeholder="ID da OS" [formControl]="osIdControl" style="width: 100px;" />
+      <input type="date" [formControl]="osDateFromControl" />
+      <input type="date" [formControl]="osDateToControl" />
+      <select [formControl]="osStatusControl">
+        <option value="all">Todas</option>
+        <option value="open">Abertas</option>
+        <option value="returned">Retornadas</option>
+      </select>
+      <button (click)="buscarOs()" class="btn-blue">Buscar</button>
+      <button (click)="gerarRelatorio()" class="btn-purple">Gerar Relatório de Folhas nas Confecções</button>
+    </div>
+
+    <div *ngIf="loadingOs" class="info">Buscando ordens...</div>
+
+    <div *ngIf="!loadingOs && osDisplayList.length">
+      <table class="os-table-view">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Oficina</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let o of osDisplayList">
+            <td>#{{ o.id }}</td>
+            <td>{{ confeccaoName(o.confeccaoId) }}</td>
+            <td>{{ formatDateDisplay(o.dataInicio) }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="o.statusNormalized === 'ABERTA' ? 'badge-open' : 'badge-done'">
+                {{ o.statusNormalized }}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 5px;">
+                <button (click)="verDetalhe(o.id)" class="btn-small">Ver</button>
+
+                <button *ngIf="o.statusNormalized === 'ABERTA'" (click)="editarOs(o.id)" class="btn-edit-small">
+                  Editar
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

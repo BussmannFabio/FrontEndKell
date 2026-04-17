@@ -1,0 +1,121 @@
+<section class="form-section">
+  <h3>Registrar Movimentação</h3>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+    <div class="form-field">
+      <label>Material</label>
+      <select formControlName="materialId">
+        <option value="">-- selecione --</option>
+        <option *ngFor="let e of estoques" [value]="e.materialId">
+          {{ e.materialPai?.nome || ('#' + e.materialId) }} — Qtd: {{ e.quantidade }}
+        </option>
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label>Tipo</label>
+      <select formControlName="tipo">
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label>Quantidade</label>
+      <input type="number" formControlName="quantidade" min="1" />
+    </div>
+
+    <div class="form-field" *ngIf="form.value.tipo === 'saida'">
+      <label>Confecção / Destino</label>
+      <select formControlName="confeccao">
+        <option value="">-- selecione --</option>
+        <option *ngFor="let c of confeccoes" [value]="c.id">{{ c.nome }}</option>
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label>
+        <input type="checkbox" formControlName="emAberto" />
+        Em aberto
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" [disabled]="form.invalid || submitting">
+        {{ submitting ? 'Processando…' : 'Registrar Movimentação' }}
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="mov-section">
+  <h3>Movimentações</h3>
+
+  <div class="mov-controls">
+    <div class="left">
+      <input placeholder="Pesquisar material..." [(ngModel)]="filtroMaterial" [ngModelOptions]="{standalone:true}" (input)="aplicarFiltros()" />
+      <select [(ngModel)]="filtroTipo" [ngModelOptions]="{standalone:true}" (change)="aplicarFiltros()">
+        <option value="">Todos</option>
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+      <input type="date" [(ngModel)]="filtroDataInicio" [ngModelOptions]="{standalone:true}" (change)="aplicarFiltros()" />
+      <input type="date" [(ngModel)]="filtroDataFim" [ngModelOptions]="{standalone:true}" (change)="aplicarFiltros()" />
+      <button class="btn-ghost" (click)="limparFiltros()">Limpar</button>
+    </div>
+    
+    <div class="right">
+      <button class="btn-success" (click)="gerarRelatorioEstoqueAtual()" [disabled]="downloading">
+        Inventário de Estoque
+      </button>
+      
+      <button (click)="gerarPdfSelecionados()" [disabled]="downloading">Gerar VALE Selecionados</button>
+      <button (click)="deletarSelecionados()" [disabled]="submitting" class="btn-danger">Deletar Selecionados</button>
+      <button *ngIf="userRole === 'admin'" (click)="gerarPdfFinanceiro()" [disabled]="downloading">Relatório Financeiro</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox" [checked]="selecionarTodos" (change)="selecionarTodosMov($event.target.checked)" /></th>
+          <th>Data</th>
+          <th>Material</th>
+          <th>Qtd</th>
+          <th>Tipo</th>
+          <th>Confecção / Destino</th>
+          <th>Status</th>
+          <th *ngIf="userRole === 'admin'">Valor Unit.</th>
+          <th *ngIf="userRole === 'admin'">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of movimentacoesPagina">
+          <td>
+            <input type="checkbox" [(ngModel)]="m.selecionado" [ngModelOptions]="{standalone:true}" (change)="onSelecionadoChange(m)" />
+          </td>
+          <td>{{ getDateString(m) }}</td>
+          <td>{{ m.materialPai?.nome || ('#' + m.materialId) }}</td>
+          <td class="numeric">{{ m.quantidade }}</td>
+          <td>{{ m.tipo }}</td>
+          <td>{{ m.tipo === 'saida' ? (m.confeccao?.nome || '-') : '-' }}</td>
+          <td>
+            <input type="checkbox" [checked]="!m.emAberto" (change)="toggleEmAberto(m, $event.target.checked)" />
+            {{ getStatus(m) }}
+          </td>
+          <td *ngIf="userRole === 'admin'" class="numeric">{{ m.valorUnitario != null ? (valueToNumber(m.valorUnitario) | number:'1.2-2') : '-' }}</td>
+          <td *ngIf="userRole === 'admin'" class="numeric">{{ m.valorUnitario != null ? ((valueToNumber(m.valorUnitario) * valueToNumber(m.quantidade)) | number:'1.2-2') : '-' }}</td>
+        </tr>
+        <tr *ngIf="movimentacoesPagina.length === 0">
+          <td [attr.colspan]="userRole === 'admin' ? 9 : 7" class="empty">Nenhuma movimentação encontrada.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mov-controls" style="justify-content:center; margin-top:10px;">
+    <button class="btn-small" (click)="paginaAnterior()" [disabled]="page===1">Anterior</button>
+    <span>Página {{ page }} / {{ Math.ceil(movimentacoesFiltradas.length / pageSize) }}</span>
+    <button class="btn-small" (click)="paginaProxima()" [disabled]="page >= Math.ceil(movimentacoesFiltradas.length / pageSize)">Próximo</button>
+  </div>
+</section>

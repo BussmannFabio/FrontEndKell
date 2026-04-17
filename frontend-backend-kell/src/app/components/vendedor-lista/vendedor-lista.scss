@@ -1,0 +1,185 @@
+/* === CONTAINER PRINCIPAL === */
+.simple-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+  font-family: "Inter", Arial, sans-serif;
+  text-align: center;
+}
+
+/* === TÍTULO === */
+.form-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+/* === GRUPOS DO FORM === */
+.form-group {
+  text-align: left;
+  margin-bottom: 20px;
+
+  label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #dcdcdc;
+    background: #fafafa;
+    transition: 0.2s;
+
+    &:focus {
+      background: #ffffff;
+      border-color: #888;
+      box-shadow: 0 0 0 2px rgba(120, 120, 120, 0.2);
+      outline: none;
+    }
+  }
+}
+
+/* === ERRO DO INPUT === */
+.error-msg {
+  color: #d9534f;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+/* === MENSAGENS === */
+.msg-success {
+  background: #d4edda;
+  color: #155724;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.msg-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+/* === BOTÕES === */
+.btn-group {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+
+  button {
+    flex: 1;
+    padding: 12px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+    font-size: 1rem;
+  }
+
+  .btn-cancel {
+    background: #e9ecef;
+    color: #333;
+    border: 1px solid #cfcfcf;
+    margin-right: 8px;
+
+    &:hover {
+      background: #d6d8db;
+    }
+  }
+
+  .btn-save {
+    background: #7f7f7f;
+    color: #ffffff;
+    border: none;
+
+    &:hover {
+      background: #6b6b6b;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* --- Estilos da listagem --- */
+.list-section {
+  margin-top: 2.25rem;
+  text-align: left;
+
+  .list-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #333;
+  }
+
+  .list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+      
+      .item-name {
+        font-weight: 600;
+        color: #222;
+        font-size: 0.95rem;
+      }
+
+      .btn-remove {
+        background: #e64a4a;
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    }
+  }
+}
+.item-name-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-phone {
+  font-size: 13px;
+  color: #777;
+  margin-top: 2px;
+}
+
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 500px) {
+  .simple-container {
+    padding: 1.5rem;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+
+    button {
+      margin: 0 0 10px 0;
+    }
+  }
+}

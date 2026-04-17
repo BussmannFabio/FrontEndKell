@@ -1,0 +1,247 @@
+<div class="pdv-container">
+    <header class="pdv-header">
+        <div class="header-left">
+            <div class="app-titles">
+                <h1>Painel de Expedição</h1>
+                <small>Vale Pedido SP - Filial Guaratinguetá</small>
+            </div>
+        </div>
+        <div class="alert-toast" *ngIf="message" [class]="messageType">{{ message }}</div>
+    </header>
+
+    <div class="modal-overlay" *ngIf="pedidoParaFinalizar">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>{{ pedidoParaFinalizar.id === 'Novo' ? 'Finalizar Vale Direto' : 'Finalizar Pedido #' +
+                    pedidoParaFinalizar.id }}</h2>
+                <button (click)="pedidoParaFinalizar = null" class="btn-close">FECHAR</button>
+            </div>
+            <div class="modal-body">
+                <div class="summary-box">
+                    <p>Cliente: <strong>{{ pedidoParaFinalizar.cliente }}</strong></p>
+                    <p *ngIf="pedidoParaFinalizar.precoTotal">Total: <strong>{{ pedidoParaFinalizar.precoTotal |
+                            currency:'BRL' }}</strong></p>
+                </div>
+                <div class="form-group">
+                    <label>Quantidade de Volumes (Caixas/Embalagens)</label>
+                    <input type="number" [(ngModel)]="volumesFinalizacao" class="input-volumes-lg"
+                        (keyup.enter)="confirmarFinalizacao()" autofocus>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button (click)="pedidoParaFinalizar = null" class="btn-cancel">CANCELAR</button>
+                <button class="btn-success-action" (click)="confirmarFinalizacao()" [disabled]="saving">
+                    {{ saving ? 'PROCESSANDO...' : 'CONFIRMAR E IMPRIMIR VALE' }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="pdv-layout">
+        <aside class="pdv-sidebar">
+            <form [formGroup]="form" class="sidebar-form">
+
+                <div class="card-config">
+                    <h3>Identificação</h3>
+                    <div class="form-group">
+                        <label>Cliente</label>
+                        <select formControlName="clienteId">
+                            <option [ngValue]="null">Selecione o Cliente</option>
+                            <option *ngFor="let c of clientesDisponiveis" [ngValue]="c.id">{{ c.nome }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Vendedor</label>
+                        <select formControlName="vendedorId">
+                            <option *ngFor="let v of vendedoresDisponiveis" [ngValue]="v.id">{{ v.nome }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-config highlight">
+                    <h3>Estoque e Origem</h3>
+                    <div class="form-group">
+                        <label>Cidade de Separação (Baixa de Estoque)</label>
+                        <select formControlName="cidadeSeparacao" class="select-cidade">
+                            <option *ngFor="let cid of cidadesEstoque" [value]="cid.id">{{ cid.nome }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-config">
+                    <h3>Pagamento e Tabela</h3>
+                    <div class="form-group">
+                        <label>Tabela de Preço</label>
+                        <select formControlName="tabelaPreco">
+                            <option *ngFor="let t of tabelasPreco" [value]="t.id">{{ t.nome }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data Inicial do Faturamento</label>
+                        <input type="date" formControlName="dataInicialPagamento">
+                    </div>
+                    <div class="form-group">
+                        <label>Modo de Pagamento</label>
+                        <select formControlName="modoPagamento">
+                            <option value="cadastro">Padrão Cadastro (Presets)</option>
+                            <option value="custom">Datas Customizadas (Manual)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" *ngIf="form.get('modoPagamento')?.value === 'cadastro'">
+                        <label>Método Disponível</label>
+                        <select formControlName="metodoPagamentoId">
+                            <option *ngFor="let m of metodosPagamentoOptions" [ngValue]="m.id">{{ m.nome }}</option>
+                        </select>
+                    </div>
+
+                    <div class="custom-parcelas-area" *ngIf="form.get('modoPagamento')?.value === 'custom'">
+                        <label>Intervalos (em dias)</label>
+                        <div class="parcela-row" *ngFor="let ctrl of parcelasCustomizadasFA.controls; let i=index">
+                            <div class="input-with-label">
+                                <small>Parc. {{ i + 1 }}</small>
+                                <input type="number" [formControl]="$any(ctrl)" placeholder="Dias">
+                            </div>
+                            <button type="button" (click)="removerParcelaCustomizada(i)"
+                                class="btn-del-small">X</button>
+                        </div>
+                        <button type="button" class="btn-add-mini" (click)="adicionarParcelaCustomizada()">+ ADICIONAR
+                            PARCELA</button>
+                    </div>
+
+                    <div class="vencimentos-preview" *ngIf="datasPagamento.length > 0">
+                        <h4>Vencimentos Calculados:</h4>
+                        <ul>
+                            <li *ngFor="let data of datasPagamento; let idx = index">
+                                <strong>{{ idx + 1 }}ª:</strong> {{ data | date:'dd/MM/yyyy' }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </form>
+        </aside>
+
+        <main class="pdv-content">
+            <div class="search-bar">
+                <input type="text" [(ngModel)]="codigoBusca" (keyup.enter)="buscarProdutoPorCodigo()"
+                    placeholder="Digite ou bipe o código do produto...">
+                <button (click)="buscarProdutoPorCodigo()" [disabled]="loading" class="btn-search">
+                    {{ loading ? 'BUSCANDO...' : 'ADICIONAR PRODUTO' }}
+                </button>
+            </div>
+
+            <div class="products-grid-container card">
+                <div class="items-viewport" [formGroup]="form">
+                    <div formArrayName="produtos">
+                        <div class="item-card" *ngFor="let p of produtosFA.controls; let i=index" [formGroupName]="i">
+                            <div class="item-header-row">
+                                <div class="item-info">
+                                    <span class="prod-code">{{ p.get('codigo')?.value }}</span>
+                                    <span class="prod-desc">{{ p.get('descricao')?.value }}</span>
+                                </div>
+                                <button class="btn-remove-prod" (click)="removerProduto(i)">REMOVER</button>
+                            </div>
+                            <div class="tam-grid-row" formArrayName="tamanhos">
+                                <div class="tam-box" *ngFor="let t of tamanhosFA(i).controls; let j=index"
+                                    [formGroupName]="j">
+                                    <span class="tam-label">{{ t.get('tamanho')?.value }}</span>
+                                    <input type="number" formControlName="quantidade" (input)="atualizarSubtotal(i, j)"
+                                        class="input-qty">
+                                    <small class="tam-price">{{ t.get('precoDuzia')?.value | currency:'BRL' }} <br><span
+                                            class="unit-price">(p/ dúzia)</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="empty-state" *ngIf="produtosFA.length === 0">
+                        <p>Nenhum produto adicionado à lista. Use o campo de busca acima.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pdv-totals-footer card">
+                <div class="totals-group">
+                    <div class="total-item">
+                        <label>Subtotal Bruto</label>
+                        <span>{{ form.get('valorBruto')?.value | currency:'BRL' }}</span>
+                    </div>
+                    <div class="total-item discount" [formGroup]="form">
+                        <label>Desconto (%)</label>
+                        <input type="number" formControlName="descontoPorcento" min="0" max="100">
+                    </div>
+                    <div class="total-item main">
+                        <label>TOTAL LÍQUIDO</label>
+                        <span class="price-lg">{{ form.get('precoTotal')?.value | currency:'BRL' }}</span>
+                    </div>
+                </div>
+                <div class="action-buttons-grid">
+                    <button class="btn-reset" (click)="resetForm()">LIMPAR TUDO</button>
+                    <button class="btn-romaneio-action" (click)="criarRomaneio()"
+                        [disabled]="saving || produtosFA.length === 0">
+                        1. SALVAR ROMANEIO (PARA SEPARAÇÃO)
+                    </button>
+                    <button class="btn-success-action" (click)="iniciarValeDireto()"
+                        [disabled]="saving || produtosFA.length === 0">
+                        2. FINALIZAR VALE DIRETO (Venda Concluída)
+                    </button>
+                </div>
+            </div>
+
+            <div class="history-section card">
+                <div class="history-header">
+                    <h3>Últimos Pedidos Gerados</h3>
+                    <span class="total-badge">{{ pedidos.length }} pedidos encontrados</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Status</th>
+                                <th>Volumes</th>
+                                <th>Total</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let ped of pedidosPaginados">
+                                <td><strong>#{{ ped.id }}</strong></td>
+                                <td>{{ ped.cliente }}</td>
+                                <td><span class="badge-status" [attr.data-status]="ped.status">{{ ped.status }}</span>
+                                </td>
+                                <td>{{ ped.volumes || 0 }}</td>
+                                <td>{{ ped.precoTotal | currency:'BRL' }}</td>
+                                <td class="actions-col-wide">
+                                    <button (click)="imprimirRomaneioH(ped.id)" class="btn-opt"
+                                        title="Imprimir Separação">SEPARAÇÃO</button>
+                                    <button (click)="imprimirValeH(ped.id)" class="btn-opt"
+                                        title="Imprimir Vale Financeiro">VALE</button>
+                                    <button *ngIf="ped.status === 'ROMANEIO'" (click)="prepararFinalizacao(ped)"
+                                        class="btn-act-success">FINALIZAR</button>
+                                    <button *ngIf="ped.status === 'FINALIZADO'" (click)="prepararFinalizacao(ped)"
+                                        class="btn-act-edit">VOLUMES</button>
+                                    <button (click)="pedirDelete(ped.id)" class="btn-act-del">EXCLUIR</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" *ngIf="pedidos.length > itensPorPagina">
+                    <button class="btn-pagination" (click)="mudarPagina(paginaAtual - 1)"
+                        [disabled]="paginaAtual === 1">
+                        &laquo; Anterior
+                    </button>
+                    <div class="pagination-info">
+                        Página <strong>{{ paginaAtual }}</strong> de <strong>{{ totalPaginas }}</strong>
+                    </div>
+                    <button class="btn-pagination" (click)="mudarPagina(paginaAtual + 1)"
+                        [disabled]="paginaAtual === totalPaginas">
+                        Próxima &raquo;
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
