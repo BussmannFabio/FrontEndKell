@@ -123,6 +123,7 @@ import { OrdemService } from '../../services/ordem.service';
                 <th style="width: 80px;">ID</th>
                 <th>Oficina</th>
                 <th>Data Início</th>
+                <th>Produto(s)</th>
                 <th style="width: 150px;">Status</th>
                 <th style="width: 150px; text-align: center;">Ações</th>
               </tr>
@@ -139,6 +140,9 @@ import { OrdemService } from '../../services/ordem.service';
                 <td class="font-medium">{{ confeccaoName(o.confeccaoId) }}</td>
                 <td>{{ formatDateDisplay(o.dataInicio) }}</td>
                 <td>
+                  <span class="produto-tag" *ngFor="let cod of getProdutosCodigos(o)">{{ cod }}</span>
+                </td>
+                <td>
                   <span class="status-pill" [ngClass]="o.statusNormalized === 'ABERTA' ? 'pill-blue' : 'pill-green'">
                     {{ o.statusNormalized }}
                   </span>
@@ -149,7 +153,7 @@ import { OrdemService } from '../../services/ordem.service';
                 </td>
               </tr>
               <tr *ngIf="osDisplayList.length === 0">
-                <td colspan="6" class="empty-state">Nenhum registro encontrado.</td>
+                <td colspan="7" class="empty-state">Nenhum registro encontrado.</td>
               </tr>
             </tbody>
           </table>
@@ -230,6 +234,7 @@ import { OrdemService } from '../../services/ordem.service';
     .btn-print:disabled { background: #94a3b8; cursor: not-allowed; }
     input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
     input[type=checkbox]:disabled { cursor: not-allowed; opacity: 0.4; }
+    .produto-tag { display: inline-block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 700; margin: 2px 2px 2px 0; }
   `]
 })
 export class CriacaoOsComponent implements OnInit {
@@ -295,15 +300,18 @@ export class CriacaoOsComponent implements OnInit {
         agrupados.forEach(it => {
           const itemForm = this.fb.group({
             produtoCodigo: [it.produtoCodigo, Validators.required],
-            grupos: this.fb.array(it.grupos.map((g: any) => this.fb.group({
-              corte: [g.corte, Validators.required],
-              pecasPorVolume: [g.pecasPorVolume, Validators.required],
-              tamanhos: this.fb.array(g.tamanhos.map((t: any) => this.fb.group({
-                tamanho: [t.tamanho],
-                volumes: [t.volumes],
-                pecasEsperadas: [{ value: t.volumes * g.pecasPorVolume, disabled: true }]
-              })))
-            })))
+            grupos: this.fb.array(it.grupos.map((g: any) => {
+              const tamsOrdenados = this.ordenarTamanhosObjeto(g.tamanhos);
+              return this.fb.group({
+                corte: [g.corte, Validators.required],
+                pecasPorVolume: [g.pecasPorVolume, Validators.required],
+                tamanhos: this.fb.array(tamsOrdenados.map((t: any) => this.fb.group({
+                  tamanho: [t.tamanho],
+                  volumes: [t.volumes],
+                  pecasEsperadas: [{ value: t.volumes * g.pecasPorVolume, disabled: true }]
+                })))
+              });
+            }))
           });
           this.attachProdutoSubscription(itemForm);
           this.itens.push(itemForm);
@@ -368,7 +376,8 @@ export class CriacaoOsComponent implements OnInit {
       this.api.get(`produtos`).subscribe((res: any) => {
         const p = (res?.produtos || res || []).find((x: any) => String(x.codigo) === String(cod));
         if (p?.tamanhos) {
-          const tams = p.tamanhos.map((t: any) => typeof t === 'string' ? t : t.tamanho);
+          let tams = p.tamanhos.map((t: any) => typeof t === 'string' ? t : t.tamanho);
+          tams = this.ordenarTamanhos(tams);
           const grupos = item.get('grupos') as FormArray;
           grupos.controls.forEach((g: any) => {
             const tArray = g.get('tamanhos') as FormArray;
@@ -460,6 +469,14 @@ export class CriacaoOsComponent implements OnInit {
 
   confeccaoName(id: any) { return this.confeccoes.find(c => c.id == id)?.nome || id; }
   formatDateDisplay(d: string) { return d ? new Date(d).toLocaleDateString('pt-BR') : '-'; }
+
+  getProdutosCodigos(os: any): string[] {
+    const itens: any[] = os.itens || os.Itens || os.ordem_itens || [];
+    const codigos = itens
+      .map((it: any) => it.produtoCodigo ?? it.produto?.codigo ?? it.codigo ?? null)
+      .filter((c: any) => c != null);
+    return [...new Set(codigos)];
+  }
   selectedOsIds: number[] = [];
 
   toggleSelection(id: number, event: Event) {
@@ -490,4 +507,30 @@ export class CriacaoOsComponent implements OnInit {
   verDetalhe(id: number) { this.router.navigate(['/relatorio-os', id]); }
   editarOs(id: number) { this.router.navigate(['/editar-os', id]); }
   cancelarEdicao() { this.resetarParaNovo(); this.router.navigate(['/criacao-os']); }
+
+  ordenarTamanhos(tams: string[]): string[] {
+    const ordem = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', 'EG', 'EGG', 'U'];
+    return [...tams].sort((a, b) => {
+      const idxA = ordem.indexOf(String(a).toUpperCase());
+      const idxB = ordem.indexOf(String(b).toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return String(a).localeCompare(String(b));
+    });
+  }
+
+  ordenarTamanhosObjeto(tamsObj: any[]): any[] {
+    const ordem = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', 'EG', 'EGG', 'U'];
+    return [...tamsObj].sort((a, b) => {
+      const valA = a.tamanho ?? a.tamanhoNome ?? '';
+      const valB = b.tamanho ?? b.tamanhoNome ?? '';
+      const idxA = ordem.indexOf(String(valA).toUpperCase());
+      const idxB = ordem.indexOf(String(valB).toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return String(valA).localeCompare(String(valB));
+    });
+  }
 }

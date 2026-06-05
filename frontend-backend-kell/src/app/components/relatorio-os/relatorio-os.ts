@@ -62,8 +62,8 @@ interface OsDados {
           <ng-container *ngFor="let d of osDados; let last = last">
             <div class="os-wrapper">
               <div class="vias-grid">
-                <ng-container *ngTemplateOutlet="viaTemplate; context: { data: d, titulo: 'VIA OFICINA', mostrarObs: true }"></ng-container>
-                <ng-container *ngTemplateOutlet="viaTemplate; context: { data: d, titulo: 'VIA INTERNA', mostrarObs: false }"></ng-container>
+                <ng-container *ngTemplateOutlet="viaInternaTemplate; context: { data: d }"></ng-container>
+                <ng-container *ngTemplateOutlet="viaOficinaTemplate; context: { data: d }"></ng-container>
               </div>
               <div class="page-divisor" *ngIf="!last"></div>
             </div>
@@ -74,8 +74,8 @@ interface OsDados {
       <ng-container *ngIf="!modoImpressaoDupla && os">
         <div class="a4-page simples">
           <div class="vias-grid">
-            <ng-container *ngTemplateOutlet="viaTemplate; context: { data: getDadosSimples(), titulo: 'VIA OFICINA', mostrarObs: true }"></ng-container>
-            <ng-container *ngTemplateOutlet="viaTemplate; context: { data: getDadosSimples(), titulo: 'VIA INTERNA', mostrarObs: false }"></ng-container>
+            <ng-container *ngTemplateOutlet="viaInternaTemplate; context: { data: getDadosSimples() }"></ng-container>
+            <ng-container *ngTemplateOutlet="viaOficinaTemplate; context: { data: getDadosSimples() }"></ng-container>
           </div>
         </div>
       </ng-container>
@@ -85,10 +85,55 @@ interface OsDados {
       </div>
     </div>
 
-    <ng-template #viaTemplate let-d="data" let-titulo="titulo" let-mostrarObs="mostrarObs">
+    <!-- VIA INTERNA: cabeçalho + grade código x tamanho para retorno + rodapé -->
+    <ng-template #viaInternaTemplate let-d="data">
       <div class="via-box">
         <div class="via-header">
-          <div class="via-titulo">{{titulo}} · Nº {{d.os.id}}</div>
+          <div class="via-titulo">VIA INTERNA · Nº {{d.os.id}}</div>
+          <div class="info-line">Costura: <b>{{d.os.confeccao?.nome}}</b></div>
+          <div class="info-line">Envio: <b>{{d.os.dataInicio | date:'dd/MM/yyyy'}}</b></div>
+          <div class="info-line">Ordem: <b>{{getCodigosUnicos(d.os)}}</b></div>
+        </div>
+
+        <div class="retorno-grid-wrapper">
+          <table class="retorno-grid">
+            <thead>
+              <tr>
+                <th class="col-codigo">Código</th>
+                <th *ngFor="let tam of getTamanhosOs(d.os)" class="col-tam">{{tam}}</th>
+                <th class="col-pecas">Pçs</th>
+                <th class="col-data">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let grupo of getCodigosComLinhas(d.os)">
+                <tr *ngFor="let linha of grupo.linhas; let first = first">
+                  <td class="cel-codigo" [class.first-row]="first">{{first ? grupo.codigo : ''}}</td>
+                  <td *ngFor="let tam of getTamanhosOs(d.os)" class="cel-vazia"></td>
+                  <td class="cel-vazia"></td>
+                  <td class="cel-vazia"></td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="via-footer">
+          <div class="totais-resumo">
+            VOL: {{d.totalVolumes}} | RETORNO: {{d.retorno}}
+          </div>
+          <div class="assinatura-area">
+            Data: __/__/__ Ass: ____________
+          </div>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- VIA OFICINA: layout original com indicadores e tabela de dados -->
+    <ng-template #viaOficinaTemplate let-d="data">
+      <div class="via-box">
+        <div class="via-header">
+          <div class="via-titulo">VIA OFICINA · Nº {{d.os.id}}</div>
           <div class="info-line">Costura: <b>{{d.os.confeccao?.nome}}</b></div>
           <div class="info-line">Envio: <b>{{d.os.dataInicio | date:'dd/MM/yyyy'}}</b></div>
           <div class="info-line">Ordem: <b>{{getCodigosUnicos(d.os)}}</b></div>
@@ -100,12 +145,7 @@ interface OsDados {
           <div class="ind-tag">P: {{d.totaisPorTamanho['P'] || 0}}</div>
           <div class="ind-tag">M: {{d.totaisPorTamanho['M'] || 0}}</div>
           <div class="ind-tag">G: {{d.totaisPorTamanho['G'] || 0}}</div>
-          <div class="ind-tag">EG: {{d.totaisPorTamanho['EG'] || 0}}</div>
           <div class="ind-tag">U: {{d.totaisPorTamanho['U'] || 0}}</div>
-        </div>
-
-        <div class="grade-conferencia" *ngIf="mostrarObs">
-          1ª: P:____ M:____ G:____ U:____ | Qtd Real:_______
         </div>
 
         <div class="table-wrapper">
@@ -117,7 +157,6 @@ interface OsDados {
                 <th>Vol</th>
                 <th>Pç/Vol</th>
                 <th>Corte</th>
-                <th *ngIf="mostrarObs" style="width: 50px;">Obs</th>
               </tr>
             </thead>
             <tbody>
@@ -128,7 +167,6 @@ interface OsDados {
                   <td>{{item.volumes ?? item.pacotes}}</td>
                   <td>{{item.pecasPorVolume ?? item.pecasPorPacote}}</td>
                   <td>{{corte.numero}}</td>
-                  <td *ngIf="mostrarObs"></td>
                 </tr>
               </ng-container>
             </tbody>
@@ -138,9 +176,6 @@ interface OsDados {
         <div class="via-footer">
           <div class="totais-resumo">
             VOL: {{d.totalVolumes}} | RETORNO: {{d.retorno}}
-          </div>
-          <div class="assinatura-area" *ngIf="mostrarObs">
-            Data: __/__/__ Ass: ____________
           </div>
         </div>
       </div>
@@ -157,7 +192,7 @@ interface OsDados {
       width: 210mm;
       min-height: 297mm;
       margin: 0 auto;
-      padding: 7mm; /* Reduzido para caber na página */
+      padding: 7mm;
       background: white;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       font-family: 'Segoe UI', Arial, sans-serif;
@@ -168,7 +203,7 @@ interface OsDados {
     .vias-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px; /* Reduzido ~20% */
+      gap: 12px;
     }
 
     .via-box {
@@ -177,19 +212,20 @@ interface OsDados {
       display: flex;
       flex-direction: column;
       height: 100%;
-      min-height: 430px; /* Reduzido ~10% de 480px */
+      min-height: 215px;
     }
 
     .via-titulo { 
       font-weight: 800; 
       text-align: center; 
-      font-size: 14px; 
+      font-size: 16px; 
       border-bottom: 2px solid #000;
       margin-bottom: 8px;
     }
 
-    .info-line { font-size: 11px; margin-bottom: 2px; }
+    .info-line { font-size: 13px; margin-bottom: 2px; }
 
+    /* ─── Indicadores (VIA OFICINA) ─── */
     .indicadores-container { 
       display: flex; 
       gap: 4px; 
@@ -198,22 +234,16 @@ interface OsDados {
 
     .ind-tag { 
       border: 1px solid #000; 
-      padding: 2px 5px; 
+      padding: 3px 5px; 
       font-weight: bold; 
-      font-size: 10px;
+      font-size: 12px;
       text-align: center;
       flex: 1;
     }
 
     .ind-tag.highlight { background: #eee; }
 
-    .grade-conferencia {
-      border: 1px dashed #000;
-      padding: 8px;
-      font-size: 10px;
-      margin-bottom: 10px;
-    }
-
+    /* ─── Tabela de dados (VIA OFICINA) ─── */
     .table-wrapper { flex-grow: 1; }
 
     .dados-table { 
@@ -223,11 +253,60 @@ interface OsDados {
 
     .dados-table th, .dados-table td { 
       border: 1px solid #000; 
-      padding: 5px 2px; /* Leve redução no padding */
+      padding: 6px 3px;
       text-align: center; 
-      font-size: 10px; 
+      font-size: 12px; 
     }
 
+    /* ─── Grade de retorno Código x Tamanho (VIA INTERNA) ─── */
+    .retorno-grid-wrapper {
+      flex-grow: 1;
+      margin: 8px 0;
+    }
+
+    .retorno-grid {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .retorno-grid th {
+      border: 1px solid #000;
+      padding: 4px 4px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: bold;
+      background: #eee;
+    }
+
+    .retorno-grid td {
+      border: 1px solid #000;
+      padding: 0;
+      text-align: center;
+      font-size: 11px;
+    }
+
+    .cel-codigo {
+      font-weight: bold;
+      font-size: 12px;
+      padding: 0 3px !important;
+      height: 20px;
+    }
+
+    .cel-codigo.first-row {
+      border-top: 2px solid #000;
+    }
+
+    .cel-vazia {
+      height: 20px;
+      min-height: 20px;
+    }
+
+    .cel-vazia:last-child {
+      /* Data column */
+    }
+
+    /* ─── Rodapé ─── */
     .via-footer {
       margin-top: 10px;
       display: flex;
@@ -239,12 +318,16 @@ interface OsDados {
       border: 2px solid #000;
       padding: 4px 8px;
       font-weight: bold;
-      font-size: 11px;
+      font-size: 13px;
+    }
+
+    .assinatura-area {
+      font-size: 13px;
     }
 
     .page-divisor {
       border-top: 2px dashed #666;
-      margin: 20px 0; /* Reduzido para economizar espaço vertical */
+      margin: 20px 0;
     }
 
     .print-actions {
@@ -294,7 +377,7 @@ interface OsDados {
 
       @page {
         size: A4 portrait;
-        margin: 5mm;
+        margin: 10mm 15mm;
       }
     }
   `]
@@ -404,6 +487,9 @@ export class RelatorioOsComponent implements OnInit {
         totalPecas += pecas;
         totalVolumes += vol;
         let tam = (item.tamanho ?? 'U').toUpperCase();
+        if (tam !== 'P' && tam !== 'M' && tam !== 'G') {
+          tam = 'U';
+        }
         totaisPorTamanho[tam] = (totaisPorTamanho[tam] || 0) + pecas;
       });
     });
@@ -425,6 +511,36 @@ export class RelatorioOsComponent implements OnInit {
       if (cod) codigos.add(String(cod));
     });
     return Array.from(codigos).join(', ');
+  }
+
+  /** Retorna os tamanhos presentes na OS, ordenados */
+  getTamanhosOs(os?: OrdemServico): string[] {
+    if (!os?.itens) return ['P', 'M', 'G', 'EG', 'U'];
+    const ordem = ['P', 'M', 'G', 'EG', 'U'];
+    const presentes = new Set<string>();
+    os.itens.forEach(item => {
+      const tam = (item.tamanho ?? 'U').toUpperCase();
+      presentes.add(tam);
+    });
+    const resultado = ordem.filter(t => presentes.has(t));
+    // Adicionar tamanhos não padrão que possam existir
+    presentes.forEach(t => { if (!resultado.includes(t)) resultado.push(t); });
+    return resultado.length > 0 ? resultado : ['P', 'M', 'G', 'EG', 'U'];
+  }
+
+  /** Retorna códigos únicos de produto com N linhas vazias para preenchimento manual */
+  getCodigosComLinhas(os?: OrdemServico): { codigo: string; linhas: number[] }[] {
+    if (!os?.itens) return [];
+    const codigos = new Set<string>();
+    os.itens.forEach(item => {
+      const cod = item.produto?.codigo || item.produtoCodigo;
+      if (cod) codigos.add(String(cod));
+    });
+    const LINHAS_POR_CODIGO = 4; // linhas em branco por produto para preencher
+    return Array.from(codigos).map(codigo => ({
+      codigo,
+      linhas: Array.from({ length: LINHAS_POR_CODIGO }, (_, i) => i + 1)
+    }));
   }
 
   imprimir(): void { window.print(); }

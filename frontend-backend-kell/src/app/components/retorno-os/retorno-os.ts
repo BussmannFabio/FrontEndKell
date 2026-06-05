@@ -148,6 +148,18 @@ export class RetornoOsComponent implements OnInit, OnDestroy {
     return p?.codigo ?? p?.nome ?? (prodId != null ? `#${prodId}` : '—');
   }
 
+  getOsProdutosCodigos(os: any): string[] {
+    const itens: any[] = os.itens || os.Itens || [];
+    const codigos = itens
+      .map((it: any) => {
+        const prodId = it.produtoId ?? it.id;
+        const p = prodId != null ? this.produtosMap[String(prodId)] : null;
+        return p?.codigo ?? it.produtoCodigo ?? null;
+      })
+      .filter((c: any) => c != null);
+    return [...new Set<string>(codigos)];
+  }
+
   private carregarConfeccoes(): void {
     this.addSub(
       this.api.get('confeccoes').subscribe({
@@ -293,11 +305,22 @@ export class RetornoOsComponent implements OnInit, OnDestroy {
     this.retornoTotalControl.setValue(false);
   }
 
+  getRetornoEsperado(pecasEsperadas: number): number {
+    return Math.floor(pecasEsperadas * 0.98);
+  }
+
+  getAguardando(ctrl: any): number {
+    const esperado98 = this.getRetornoEsperado(ctrl.get('pecasEsperadas')?.value ?? 0);
+    const jaRetornadas = ctrl.get('pecasReaisAcumuladas')?.value ?? 0;
+    return Math.max(0, esperado98 - jaRetornadas);
+  }
+
   private applyRetornoTotalToControl(ctrl: FormGroup) {
     if (this.retornoTotalControl.value) {
       const esperadas = ctrl.get('pecasEsperadas')?.value ?? 0;
       const jaRetornadas = ctrl.get('pecasReaisAcumuladas')?.value ?? 0;
-      const falta = Math.max(0, esperadas - jaRetornadas);
+      const esperado98 = this.getRetornoEsperado(esperadas);
+      const falta = Math.max(0, esperado98 - jaRetornadas);
       ctrl.get('pecasRetornadas')?.setValue(falta, { emitEvent: false });
     }
   }

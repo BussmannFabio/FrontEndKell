@@ -41,6 +41,17 @@
     &.open { background: #dcfce7; color: #15803d; }
     &.ret { background: #fee2e2; color: #b91c1c; }
   }
+  .produto-tag {
+    display: inline-block;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    margin: 2px 2px 2px 0;
+  }
 }
 
 .return-form-panel {

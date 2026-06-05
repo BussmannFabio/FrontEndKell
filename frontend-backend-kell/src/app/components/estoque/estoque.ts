@@ -27,7 +27,7 @@ interface ProdutoAgrupado {
         <div class="tabs">
           <button (click)="aba = 'prontos'" [class.active]="aba==='prontos'">Prontos</button>
           <button (click)="aba = 'producao'" [class.active]="aba==='producao'">Produção</button>
-          <button (click)="aba = 'resumo'" [class.active]="aba==='resumo'">Resumo</button>
+          <button (click)="aba = 'resumo'" [class.active]="aba==='resumo'">TOTAL</button>
         </div>
 
         <div class="controle">
@@ -70,7 +70,7 @@ interface ProdutoAgrupado {
             <td class="col-codigo">{{ item.codigo }}</td>
             <td *ngFor="let tam of ['p','m','g','u']" [ngClass]="getClasseAlertaTam(item, tam)">
               <div class="valor-estoque">{{ getValorTam(item, tam) }}</div>
-              <div class="valor-minimo no-print">min: {{ getMinimoTam(item, tam) }}</div>
+              <div class="valor-minimo" [class.no-print]="aba === 'producao'">min: {{ getMinimoTam(item, tam) }}</div>
             </td>
             <td class="col-total"><strong>{{ getTotalLinha(item) }}</strong></td>
           </tr>
@@ -125,10 +125,10 @@ export class Estoque implements OnInit {
   filtroConfeccao = '';
   filtro = '';
   aba: 'prontos' | 'producao' | 'resumo' = 'prontos';
-  unidade: 'pecas' | 'duzias' = 'duzias'; 
+  unidade: 'pecas' | 'duzias' = 'duzias';
   dataHoje = new Date();
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService) { }
 
   ngOnInit() { this.carregarEstoque(); }
 
@@ -146,7 +146,7 @@ export class Estoque implements OnInit {
           setConfeccoes.add(confeccao);
 
           const tamOriginal = (item.produtoTamanho?.tamanho || 'U').toUpperCase();
-          let tamChave: keyof GradeTamanhos = (['P', 'M', 'G'].includes(tamOriginal)) 
+          let tamChave: keyof GradeTamanhos = (['P', 'M', 'G'].includes(tamOriginal))
             ? tamOriginal.toLowerCase() as keyof GradeTamanhos : 'u';
 
           const pronto = Number(item.quantidadePronta || 0);
@@ -202,7 +202,7 @@ export class Estoque implements OnInit {
 
   getTotalLinha(item: ProdutoAgrupado): number {
     let total = 0;
-    ['p','m','g','u'].forEach(t => {
+    ['p', 'm', 'g', 'u'].forEach(t => {
       const tam = t as keyof GradeTamanhos;
       if (this.aba !== 'producao') total += item.pronto[tam];
       if (this.aba !== 'prontos') total += item.producao[tam];
@@ -236,13 +236,13 @@ export class Estoque implements OnInit {
 
   somarTotalGeral(): number {
     const soma = this.produtosFiltrados.reduce((acc, item) => {
-        let tItem = 0;
-        ['p','m','g','u'].forEach(t => {
-            const tam = t as keyof GradeTamanhos;
-            if (this.aba !== 'producao') tItem += item.pronto[tam];
-            if (this.aba !== 'prontos') tItem += item.producao[tam];
-        });
-        return acc + tItem;
+      let tItem = 0;
+      ['p', 'm', 'g', 'u'].forEach(t => {
+        const tam = t as keyof GradeTamanhos;
+        if (this.aba !== 'producao') tItem += item.pronto[tam];
+        if (this.aba !== 'prontos') tItem += item.producao[tam];
+      });
+      return acc + tItem;
     }, 0);
     return this.converter(soma);
   }

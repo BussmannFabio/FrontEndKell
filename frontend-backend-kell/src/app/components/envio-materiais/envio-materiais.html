@@ -52,25 +52,28 @@
 
   <div class="mov-controls">
     <div class="left">
-      <input placeholder="Pesquisar material..." [(ngModel)]="filtroMaterial" [ngModelOptions]="{standalone:true}" (input)="aplicarFiltros()" />
+      <input placeholder="Pesquisar material..." [(ngModel)]="filtroMaterial" [ngModelOptions]="{standalone:true}"
+        (input)="aplicarFiltros()" />
       <select [(ngModel)]="filtroTipo" [ngModelOptions]="{standalone:true}" (change)="aplicarFiltros()">
         <option value="">Todos</option>
         <option value="entrada">Entrada</option>
         <option value="saida">Saída</option>
       </select>
-      <input type="date" [(ngModel)]="filtroDataInicio" [ngModelOptions]="{standalone:true}" (change)="aplicarFiltros()" />
+      <input type="date" [(ngModel)]="filtroDataInicio" [ngModelOptions]="{standalone:true}"
+        (change)="aplicarFiltros()" />
       <input type="date" [(ngModel)]="filtroDataFim" [ngModelOptions]="{standalone:true}" (change)="aplicarFiltros()" />
       <button class="btn-ghost" (click)="limparFiltros()">Limpar</button>
     </div>
-    
+
     <div class="right">
       <button class="btn-success" (click)="gerarRelatorioEstoqueAtual()" [disabled]="downloading">
         Inventário de Estoque
       </button>
-      
+
       <button (click)="gerarPdfSelecionados()" [disabled]="downloading">Gerar VALE Selecionados</button>
       <button (click)="deletarSelecionados()" [disabled]="submitting" class="btn-danger">Deletar Selecionados</button>
-      <button *ngIf="userRole === 'admin'" (click)="gerarPdfFinanceiro()" [disabled]="downloading">Relatório Financeiro</button>
+      <button *ngIf="userRole === 'admin'" (click)="gerarPdfFinanceiro()" [disabled]="downloading">Relatório
+        Financeiro</button>
     </div>
   </div>
 
@@ -85,8 +88,7 @@
           <th>Tipo</th>
           <th>Confecção / Destino</th>
           <th>Status</th>
-          <th *ngIf="userRole === 'admin'">Valor Unit.</th>
-          <th *ngIf="userRole === 'admin'">Total</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -103,11 +105,12 @@
             <input type="checkbox" [checked]="!m.emAberto" (change)="toggleEmAberto(m, $event.target.checked)" />
             {{ getStatus(m) }}
           </td>
-          <td *ngIf="userRole === 'admin'" class="numeric">{{ m.valorUnitario != null ? (valueToNumber(m.valorUnitario) | number:'1.2-2') : '-' }}</td>
-          <td *ngIf="userRole === 'admin'" class="numeric">{{ m.valorUnitario != null ? ((valueToNumber(m.valorUnitario) * valueToNumber(m.quantidade)) | number:'1.2-2') : '-' }}</td>
+          <td>
+            <button type="button" class="btn-action btn-edit" (click)="abrirModalEdicao(m)">Alterar</button>
+          </td>
         </tr>
         <tr *ngIf="movimentacoesPagina.length === 0">
-          <td [attr.colspan]="userRole === 'admin' ? 9 : 7" class="empty">Nenhuma movimentação encontrada.</td>
+          <td colspan="8" class="empty">Nenhuma movimentação encontrada.</td>
         </tr>
       </tbody>
     </table>
@@ -116,6 +119,62 @@
   <div class="mov-controls" style="justify-content:center; margin-top:10px;">
     <button class="btn-small" (click)="paginaAnterior()" [disabled]="page===1">Anterior</button>
     <span>Página {{ page }} / {{ Math.ceil(movimentacoesFiltradas.length / pageSize) }}</span>
-    <button class="btn-small" (click)="paginaProxima()" [disabled]="page >= Math.ceil(movimentacoesFiltradas.length / pageSize)">Próximo</button>
+    <button class="btn-small" (click)="paginaProxima()"
+      [disabled]="page >= Math.ceil(movimentacoesFiltradas.length / pageSize)">Próximo</button>
   </div>
 </section>
+
+<!-- Modal de Edição -->
+<div class="modal-backdrop" *ngIf="exibirModalEdicao">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Alterar Movimentação</h3>
+      <button class="close-btn" (click)="fecharModalEdicao()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label>Material</label>
+        <select [(ngModel)]="movimentacaoEdicao.materialId" [ngModelOptions]="{standalone:true}" disabled>
+          <option *ngFor="let e of estoques" [value]="e.materialId">
+            {{ e.materialPai?.nome || ('#' + e.materialId) }}
+          </option>
+        </select>
+        <span class="readonly-warning">O material não pode ser alterado diretamente.</span>
+      </div>
+
+      <div class="form-field">
+        <label>Tipo</label>
+        <select [(ngModel)]="movimentacaoEdicao.tipo" [ngModelOptions]="{standalone:true}">
+          <option value="entrada">Entrada</option>
+          <option value="saida">Saída</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label>Quantidade</label>
+        <input type="number" [(ngModel)]="movimentacaoEdicao.quantidade" [ngModelOptions]="{standalone:true}" min="1" />
+      </div>
+
+      <div class="form-field" *ngIf="movimentacaoEdicao.tipo === 'saida'">
+        <label>Confecção / Destino</label>
+        <select [(ngModel)]="movimentacaoEdicao.confeccaoId" [ngModelOptions]="{standalone:true}">
+          <option [ngValue]="null">-- selecione --</option>
+          <option *ngFor="let c of confeccoes" [value]="c.id">{{ c.nome }}</option>
+        </select>
+      </div>
+
+      <div class="form-field checkbox-field">
+        <label>
+          <input type="checkbox" [(ngModel)]="movimentacaoEdicao.emAberto" [ngModelOptions]="{standalone:true}" />
+          Em aberto
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" (click)="fecharModalEdicao()">Cancelar</button>
+      <button type="button" class="btn-submit" (click)="salvarEdicao()" [disabled]="salvandoEdicao">
+        {{ salvandoEdicao ? 'Salvando...' : 'Salvar Alterações' }}
+      </button>
+    </div>
+  </div>
+</div>

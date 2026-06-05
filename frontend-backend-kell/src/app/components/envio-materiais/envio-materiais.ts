@@ -90,10 +90,15 @@ export class EnvioMateriaisComponent implements OnInit {
   userRole: 'admin' | 'user' = 'user';
   userData: any = null;
 
+  // Variáveis para Edição
+  exibirModalEdicao = false;
+  movimentacaoEdicao: any = {};
+  salvandoEdicao = false;
+
   constructor(
     private api: ApiService,
     private movService: MovimentacaoMaterialService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.carregarUsuario();
@@ -419,7 +424,7 @@ export class EnvioMateriaisComponent implements OnInit {
     return m.emAberto ? 'Aberto' : 'Acertado';
   }
 
-deletarSelecionados(): void {
+  deletarSelecionados(): void {
     // 1. Filtra apenas os itens selecionados que possuem ID (evita o erro /undefined)
     const selecionados = this.movimentacoes.filter(m => m.selecionado && m.id != null);
 
@@ -445,10 +450,10 @@ deletarSelecionados(): void {
         .then(() => {
           // --- LÓGICA DE ESTORNO NO ESTOQUE LOCAL ---
           const estoque = this.estoques.find(e => Number(e.materialId) === Number(m.materialId));
-          
+
           if (estoque) {
             const qtdMovimentada = Number(m.quantidade) || 0;
-            
+
             // Se deletamos uma SAÍDA, o material deve VOLTAR ao estoque (+)
             // Se deletamos uma ENTRADA, o material deve SAIR do estoque (-)
             if (m.tipo === 'saida') {
@@ -457,7 +462,7 @@ deletarSelecionados(): void {
               estoque.quantidade = Number(estoque.quantidade) - qtdMovimentada;
             }
           }
-          
+
           // Remove o item da lista principal após sucesso no back-end
           this.movimentacoes = this.movimentacoes.filter(item => item.id !== m.id);
         })
@@ -479,7 +484,7 @@ deletarSelecionados(): void {
 
       // Atualiza a visualização e filtros
       this.aplicarFiltros();
-      
+
       // Reseta a seleção global
       this.selecionarTodos = false;
     });
@@ -666,16 +671,16 @@ deletarSelecionados(): void {
   }
 
   gerarRelatorioEstoqueAtual(): void {
-  this.downloading = true;
+    this.downloading = true;
 
-  if (!this.estoques || this.estoques.length === 0) {
-    alert('Não há dados de estoque para gerar o relatório.');
-    this.downloading = false;
-    return;
-  }
+    if (!this.estoques || this.estoques.length === 0) {
+      alert('Não há dados de estoque para gerar o relatório.');
+      this.downloading = false;
+      return;
+    }
 
-  const nowStr = new Date().toLocaleString();
-  const css = `
+    const nowStr = new Date().toLocaleString();
+    const css = `
     <style>
       body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
       .header { text-align: center; border-bottom: 2px solid #444; margin-bottom: 20px; padding-bottom: 10px; }
@@ -689,33 +694,33 @@ deletarSelecionados(): void {
     </style>
   `;
 
-  let tableRows = '';
-  let valorTotalEstoque = 0;
+    let tableRows = '';
+    let valorTotalEstoque = 0;
 
-  // Ordenar estoques por nome do material
-  const estoqueOrdenado = [...this.estoques].sort((a, b) => {
-    const nomeA = a.materialPai?.nome ?? a.material?.nome ?? a.nome ?? '';
-    const nomeB = b.materialPai?.nome ?? b.material?.nome ?? b.nome ?? '';
-    return nomeA.localeCompare(nomeB);
-  });
+    // Ordenar estoques por nome do material
+    const estoqueOrdenado = [...this.estoques].sort((a, b) => {
+      const nomeA = a.materialPai?.nome ?? a.material?.nome ?? a.nome ?? '';
+      const nomeB = b.materialPai?.nome ?? b.material?.nome ?? b.nome ?? '';
+      return nomeA.localeCompare(nomeB);
+    });
 
-  estoqueOrdenado.forEach(item => {
-    const nome = item.materialPai?.nome ?? item.material?.nome ?? item.nome ?? 'Sem Nome';
-    const qtd = Number(item.quantidade) || 0;
-    const valorUnit = this.getMaterialValorUnitario(item.materialId);
-    const subtotal = qtd * valorUnit;
-    valorTotalEstoque += subtotal;
+    estoqueOrdenado.forEach(item => {
+      const nome = item.materialPai?.nome ?? item.material?.nome ?? item.nome ?? 'Sem Nome';
+      const qtd = Number(item.quantidade) || 0;
+      const valorUnit = this.getMaterialValorUnitario(item.materialId);
+      const subtotal = qtd * valorUnit;
+      valorTotalEstoque += subtotal;
 
-    tableRows += `
+      tableRows += `
       <tr>
         <td>${this.escapeHtml(nome)}</td>
         <td>${this.escapeHtml(item.materialPai?.unidadeMedida ?? 'un')}</td>
         <td class="text-right ${qtd <= 0 ? 'qtd-alerta' : ''}">${qtd}</td>
       </tr>
     `;
-  });
+    });
 
-  const bodyHtml = `
+    const bodyHtml = `
     <div class="header">
       <h2>Relatório de Inventário - Estoque de Materiais</h2>
       <p>Data de Emissão: ${nowStr}</p>
@@ -741,10 +746,10 @@ deletarSelecionados(): void {
     </div>
   `;
 
-  const html = `<html><head><meta charset="utf-8">${css}</head><body>${bodyHtml}</body></html>`;
-  this.openPrintWindowAndPrint(html);
-  this.downloading = false;
-}
+    const html = `<html><head><meta charset="utf-8">${css}</head><body>${bodyHtml}</body></html>`;
+    this.openPrintWindowAndPrint(html);
+    this.downloading = false;
+  }
   // ---------------------------
   // Impressão helper
   // ---------------------------
@@ -773,7 +778,7 @@ deletarSelecionados(): void {
         printWindow.document.write(final);
         printWindow.document.close();
       } catch (err) {
-        try { printWindow.close(); } catch (_) {}
+        try { printWindow.close(); } catch (_) { }
         printWindow = null;
       }
     }
@@ -793,7 +798,7 @@ deletarSelecionados(): void {
         setTimeout(() => URL.revokeObjectURL(url), 10000);
         return;
       } catch (e) {
-        try { document.body.removeChild(a); } catch (_) {}
+        try { document.body.removeChild(a); } catch (_) { }
       }
       try {
         window.location.href = url;
@@ -802,6 +807,85 @@ deletarSelecionados(): void {
         alert('Não foi possível abrir janela de impressão automaticamente. Verifique bloqueadores de pop-ups.');
       }
     }
+  }
+
+  // ---------------------------
+  // Edição de Movimentação
+  // ---------------------------
+  abrirModalEdicao(mov: Movimentacao): void {
+    this.movimentacaoEdicao = { 
+      id: mov.id,
+      materialId: mov.materialId,
+      tipo: mov.tipo,
+      quantidade: mov.quantidade,
+      confeccaoId: mov.confeccaoId,
+      emAberto: mov.emAberto,
+      observacao: mov.observacao
+    };
+    this.exibirModalEdicao = true;
+  }
+
+  fecharModalEdicao(): void {
+    this.exibirModalEdicao = false;
+    this.movimentacaoEdicao = {};
+  }
+
+  salvarEdicao(): void {
+    if (!this.movimentacaoEdicao.id) return;
+    this.salvandoEdicao = true;
+    
+    const payload = {
+      tipo: this.movimentacaoEdicao.tipo,
+      quantidade: Number(this.movimentacaoEdicao.quantidade),
+      confeccaoId: this.movimentacaoEdicao.tipo === 'saida' ? this.movimentacaoEdicao.confeccaoId : null,
+      emAberto: this.movimentacaoEdicao.emAberto
+    };
+
+    this.movService.atualizar(this.movimentacaoEdicao.id, payload).subscribe({
+      next: (res: any) => {
+        const idx = this.movimentacoes.findIndex(m => m.id === this.movimentacaoEdicao.id);
+        if (idx !== -1) {
+          const originalMov = this.movimentacoes[idx];
+          const originalTipo = originalMov.tipo;
+          const originalQtd = Number(originalMov.quantidade) || 0;
+          const novoTipo = payload.tipo;
+          const novaQtd = payload.quantidade;
+          
+          // Estorna a movimentação antiga do estoque local
+          const estoque = this.estoques.find(e => Number(e.materialId) === Number(originalMov.materialId));
+          if (estoque) {
+            if (originalTipo === 'saida') {
+              estoque.quantidade = Number(estoque.quantidade) + originalQtd;
+            } else if (originalTipo === 'entrada') {
+              estoque.quantidade = Number(estoque.quantidade) - originalQtd;
+            }
+            
+            if (novoTipo === 'saida') {
+              estoque.quantidade = Number(estoque.quantidade) - novaQtd;
+            } else if (novoTipo === 'entrada') {
+              estoque.quantidade = Number(estoque.quantidade) + novaQtd;
+            }
+          }
+
+          // Atualiza dados locais
+          this.movimentacoes[idx].tipo = res.tipo ?? payload.tipo;
+          this.movimentacoes[idx].quantidade = res.quantidade ?? payload.quantidade;
+          this.movimentacoes[idx].confeccaoId = res.confeccaoId ?? payload.confeccaoId;
+          this.movimentacoes[idx].emAberto = res.emAberto !== undefined ? res.emAberto : payload.emAberto;
+          this.movimentacoes[idx].confeccao = this.confeccoes.find(c => c.id === this.movimentacoes[idx].confeccaoId) ?? null;
+        }
+        
+        this.aplicarFiltros();
+        this.fecharModalEdicao();
+        alert('Movimentação atualizada com sucesso!');
+      },
+      error: (err) => {
+        alert('Erro ao atualizar movimentação: ' + (err?.error?.error ?? err?.message ?? err));
+      },
+      complete: () => {
+        this.salvandoEdicao = false;
+      }
+    });
   }
 
   // ---------------------------
