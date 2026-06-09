@@ -38,7 +38,7 @@
               [class.row-selected]="form?.get('id')?.value === os.id">
               <td><strong>#{{ os.id }}</strong></td>
               <td>{{ getConfeccaoName(os.confeccaoId) }}</td>
-              <td>{{ os.dataInicio | date:'dd/MM/yyyy' }}</td>
+              <td>{{ os.dataInicio | date:'dd/MM/yyyy':'UTC' }}</td>
               <td>
                 <span class="produto-tag" *ngFor="let cod of getOsProdutosCodigos(os)">{{ cod }}</span>
               </td>
@@ -68,6 +68,7 @@
         <div class="os-info">
           <h2>Retorno OS #{{ form.get('id')?.value }}</h2>
           <span class="confeccao-tag">{{ getConfeccaoName(form.get('confeccaoId')?.value) }}</span>
+          <span *ngIf="form.get('semPerda')?.value" class="sem-perda-tag" style="background-color: var(--danger); color: white; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; margin-left: 8px; display: inline-block;">SEM TAXA DE PERDA</span>
         </div>
         <div class="global-actions">
           <label class="toggle-total">

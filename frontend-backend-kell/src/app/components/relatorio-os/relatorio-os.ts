@@ -40,6 +40,7 @@ interface OrdemServico {
   confeccao?: Confeccao;
   itens?: CorteItem[];
   cortes?: Corte[];
+  semPerda?: boolean;
 }
 
 interface OsDados {
@@ -91,8 +92,17 @@ interface OsDados {
         <div class="via-header">
           <div class="via-titulo">VIA INTERNA · Nº {{d.os.id}}</div>
           <div class="info-line">Costura: <b>{{d.os.confeccao?.nome}}</b></div>
-          <div class="info-line">Envio: <b>{{d.os.dataInicio | date:'dd/MM/yyyy'}}</b></div>
+          <div class="info-line">Envio: <b>{{d.os.dataInicio | date:'dd/MM/yyyy':'UTC'}}</b></div>
           <div class="info-line">Ordem: <b>{{getCodigosUnicos(d.os)}}</b></div>
+        </div>
+
+        <div class="indicadores-container">
+          <div class="ind-tag highlight">Qtd: {{d.totalPecas}}</div>
+          <div class="ind-tag highlight">Dúz: {{d.totalDuzias}}</div>
+          <div class="ind-tag">P: {{d.totaisPorTamanho['P'] || 0}}</div>
+          <div class="ind-tag">M: {{d.totaisPorTamanho['M'] || 0}}</div>
+          <div class="ind-tag">G: {{d.totaisPorTamanho['G'] || 0}}</div>
+          <div class="ind-tag">U: {{d.totaisPorTamanho['U'] || 0}}</div>
         </div>
 
         <div class="retorno-grid-wrapper">
@@ -135,7 +145,7 @@ interface OsDados {
         <div class="via-header">
           <div class="via-titulo">VIA OFICINA · Nº {{d.os.id}}</div>
           <div class="info-line">Costura: <b>{{d.os.confeccao?.nome}}</b></div>
-          <div class="info-line">Envio: <b>{{d.os.dataInicio | date:'dd/MM/yyyy'}}</b></div>
+          <div class="info-line">Envio: <b>{{d.os.dataInicio | date:'dd/MM/yyyy':'UTC'}}</b></div>
           <div class="info-line">Ordem: <b>{{getCodigosUnicos(d.os)}}</b></div>
         </div>
 
@@ -499,7 +509,7 @@ export class RelatorioOsComponent implements OnInit {
       totalDuzias: Math.ceil(totalPecas / 12),
       totalVolumes,
       totaisPorTamanho,
-      retorno: Math.floor(totalPecas * 0.98)
+      retorno: os.semPerda ? totalPecas : Math.floor(totalPecas * 0.98)
     };
   }
 

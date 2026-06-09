@@ -43,6 +43,7 @@ interface Ordem {
   dataRetorno?: string;
   status?: string;
   itens: OsItem[];
+  semPerda?: boolean;
 }
 
 interface Produto {
@@ -300,13 +301,15 @@ export class RetornoOsComponent implements OnInit, OnDestroy {
       id: [ordem.id],
       confeccaoId: [ordem.confeccaoId],
       status: [ordem.status],
+      semPerda: [ordem.semPerda || false],
       itens: this.fb.array(itensFg)
     });
     this.retornoTotalControl.setValue(false);
   }
 
   getRetornoEsperado(pecasEsperadas: number): number {
-    return Math.floor(pecasEsperadas * 0.98);
+    const semPerda = this.form?.get('semPerda')?.value || false;
+    return semPerda ? pecasEsperadas : Math.floor(pecasEsperadas * 0.98);
   }
 
   getAguardando(ctrl: any): number {

@@ -31,6 +31,10 @@ import { OrdemService } from '../../services/ordem.service';
       </header>
 
       <form [formGroup]="form" (ngSubmit)="salvarOS()" class="main-card form-area">
+        <div class="info-alert" *ngIf="isEditing && osStatusParaEdicao !== 'CRIADA'" style="background: #fffbeb; border: 1px solid #fef3c7; color: #b45309; padding: 12px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; font-weight: 500;">
+          💡 Os itens desta OS não podem ser modificados pois ela já está em produção. Apenas dados de cabeçalho (como datas, oficina e taxa de perda) podem ser editados.
+        </div>
+
         <div class="form-section-title">Dados da Operação</div>
         <div class="grid-row">
           <div class="field-group flex-2">
@@ -48,6 +52,18 @@ import { OrdemService } from '../../services/ordem.service';
             <label>Previsão de Retorno</label>
             <input type="date" formControlName="dataRetorno" />
           </div>
+          
+          <!-- Toggle switch para semPerda -->
+          <div class="field-group toggle-container" style="justify-content: flex-end; align-items: center; min-width: 140px;">
+            <label class="toggle-label">Taxa de Perda (-2%)</label>
+            <label class="switch">
+              <input type="checkbox" formControlName="semPerda" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-status-text" [style.color]="form.get('semPerda')?.value ? 'var(--danger)' : 'var(--success)'">
+              {{ form.get('semPerda')?.value ? 'Desativada (100%)' : 'Ativada' }}
+            </span>
+          </div>
         </div>
 
         <div class="form-section-title" style="margin-top: 20px;">Itens da Ordem</div>
@@ -58,7 +74,7 @@ import { OrdemService } from '../../services/ordem.service';
                 <label>Referência do Produto</label>
                 <input placeholder="Ex: 202" formControlName="produtoCodigo" type="text" />
               </div>
-              <button type="button" class="btn-danger-text" (click)="removerItem(i)">Remover Produto</button>
+              <button type="button" class="btn-danger-text" (click)="removerItem(i)" *ngIf="!isEditing || osStatusParaEdicao === 'CRIADA'">Remover Produto</button>
             </div>
 
             <div formArrayName="grupos">
@@ -72,7 +88,7 @@ import { OrdemService } from '../../services/ordem.service';
                     <label>Peças por Volume</label>
                     <input type="number" formControlName="pecasPorVolume" (input)="atualizarCalculos(i, g)" />
                   </div>
-                  <button type="button" class="btn-link-danger" (click)="removerGrupo(i, g)" *ngIf="getGrupos(i).length > 1">Excluir Lote</button>
+                  <button type="button" class="btn-link-danger" (click)="removerGrupo(i, g)" *ngIf="getGrupos(i).length > 1 && (!isEditing || osStatusParaEdicao === 'CRIADA')">Excluir Lote</button>
                 </div>
 
                 <div formArrayName="tamanhos" class="size-row">
@@ -84,14 +100,14 @@ import { OrdemService } from '../../services/ordem.service';
                 </div>
               </div>
             </div>
-            <button type="button" class="btn-outline-primary" (click)="adicionarGrupo(i)">+ Adicionar Corte ao Produto</button>
+            <button type="button" class="btn-outline-primary" (click)="adicionarGrupo(i)" *ngIf="!isEditing || osStatusParaEdicao === 'CRIADA'">+ Adicionar Corte ao Produto</button>
           </div>
         </div>
 
         <div class="form-footer">
-          <button type="button" class="btn-secondary" (click)="adicionarItem()">+ Adicionar Outro Produto</button>
-          <button type="submit" class="btn-primary" [disabled]="form.invalid">
-            {{ isEditing ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR ORDEM' }}
+          <button type="button" class="btn-secondary" (click)="adicionarItem()" *ngIf="!isEditing || osStatusParaEdicao === 'CRIADA'">+ Adicionar Outro Produto</button>
+          <button type="submit" class="btn-primary" [disabled]="form.invalid || submitting">
+            {{ submitting ? 'ENVIANDO...' : (isEditing ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR ORDEM') }}
           </button>
         </div>
       </form>
@@ -235,6 +251,19 @@ import { OrdemService } from '../../services/ordem.service';
     input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
     input[type=checkbox]:disabled { cursor: not-allowed; opacity: 0.4; }
     .produto-tag { display: inline-block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 700; margin: 2px 2px 2px 0; }
+
+    /* Toggle Switch Styles */
+    .toggle-container { display: flex; flex-direction: column; align-items: center; margin-left: 10px; }
+    .toggle-label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+    .toggle-status-text { font-size: 11px; font-weight: 700; margin-top: 4px; }
+    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+    input:checked + .slider { background-color: var(--danger); }
+    input:checked + .slider:before { transform: translateX(24px); }
+    .slider.round { border-radius: 34px; }
+    .slider.round:before { border-radius: 50%; }
   `]
 })
 export class CriacaoOsComponent implements OnInit {
@@ -248,6 +277,8 @@ export class CriacaoOsComponent implements OnInit {
   confeccoes: any[] = [];
   isEditing = false;
   osIdParaEdicao: number | null = null;
+  osStatusParaEdicao: string | null = null;
+  submitting = false;
 
   osIdControl = new FormControl('');
   osStatusControl = new FormControl('all');
@@ -258,6 +289,7 @@ export class CriacaoOsComponent implements OnInit {
       dataInicio: [new Date().toISOString().substring(0, 10), Validators.required],
       dataRetorno: [''],
       confeccaoId: ['', Validators.required],
+      semPerda: [false],
       itens: this.fb.array([])
     });
   }
@@ -287,10 +319,13 @@ export class CriacaoOsComponent implements OnInit {
         const os = res?.ordem || res;
         if (!os) return;
 
+        this.osStatusParaEdicao = os.status;
+
         this.form.patchValue({
           dataInicio: os.dataInicio?.substring(0, 10),
           dataRetorno: os.dataRetorno?.substring(0, 10),
-          confeccaoId: os.confeccaoId
+          confeccaoId: os.confeccaoId,
+          semPerda: !!os.semPerda
         });
 
         this.itens.clear();
@@ -316,6 +351,13 @@ export class CriacaoOsComponent implements OnInit {
           this.attachProdutoSubscription(itemForm);
           this.itens.push(itemForm);
         });
+
+        if (os.status !== 'CRIADA') {
+          this.itens.disable();
+        } else {
+          this.itens.enable();
+        }
+
         document.getElementById('anchor-top')?.scrollIntoView({ behavior: 'smooth' });
       }
     });
@@ -400,7 +442,8 @@ export class CriacaoOsComponent implements OnInit {
   }
 
   salvarOS(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.submitting) return;
+    this.submitting = true;
     const raw = this.form.getRawValue();
     const itensPayload: any[] = [];
 
@@ -431,6 +474,10 @@ export class CriacaoOsComponent implements OnInit {
         this.resetarParaNovo();
         this.buscarOs();
         this.router.navigate(['/criacao-os']);
+      },
+      error: (err) => {
+        alert('Erro ao salvar OS: ' + (err.error?.error || err.message));
+        this.submitting = false;
       }
     });
   }
@@ -462,13 +509,32 @@ export class CriacaoOsComponent implements OnInit {
   resetarParaNovo() {
     this.isEditing = false;
     this.osIdParaEdicao = null;
-    this.form.reset({ dataInicio: new Date().toISOString().substring(0, 10), dataRetorno: '', confeccaoId: '' });
+    this.osStatusParaEdicao = null;
+    this.submitting = false;
+    this.form.reset({ dataInicio: new Date().toISOString().substring(0, 10), dataRetorno: '', confeccaoId: '', semPerda: false });
     this.itens.clear();
+    this.itens.enable();
     this.adicionarItem();
   }
 
   confeccaoName(id: any) { return this.confeccoes.find(c => c.id == id)?.nome || id; }
-  formatDateDisplay(d: string) { return d ? new Date(d).toLocaleDateString('pt-BR') : '-'; }
+  formatDateDisplay(d: string) {
+    if (!d) return '-';
+    const parts = d.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    try {
+      const dateObj = new Date(d);
+      if (isNaN(dateObj.getTime())) return d;
+      const day = String(dateObj.getUTCDate()).padStart(2, '0');
+      const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+      const year = dateObj.getUTCFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      return d;
+    }
+  }
 
   getProdutosCodigos(os: any): string[] {
     const itens: any[] = os.itens || os.Itens || os.ordem_itens || [];

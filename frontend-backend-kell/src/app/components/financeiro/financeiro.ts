@@ -252,8 +252,8 @@ export class Financeiro implements OnInit {
 
     const htmlSections = this.report.map(oficina => {
       const rows = (oficina.ordensDetalhadas || []).map(o => {
-        // Regra atualizada: Se esperado é 100, a meta real para bônus é 98 (2% margem)
-        const metaCalculada = o.esperado * 0.98;
+        // Regra atualizada: Se esperado é 100, a meta real para bônus é o meta98 retornado do backend
+        const metaCalculada = o.meta98 ?? (o.semPerda ? o.esperado : o.esperado * 0.98);
         const pecasDiferenca = o.real - metaCalculada;
         
         // Valor unitário p/ bônus (Baseado no valor total / real produzido)
@@ -279,10 +279,14 @@ export class Financeiro implements OnInit {
       }).join('');
 
       // Totais por oficina para o PDF
-      const totalDifOficina = (oficina.ordensDetalhadas || []).reduce((acc, o) => acc + (o.real - (o.esperado * 0.98)), 0);
+      const totalDifOficina = (oficina.ordensDetalhadas || []).reduce((acc, o) => {
+        const metaCalculada = o.meta98 ?? (o.semPerda ? o.esperado : o.esperado * 0.98);
+        return acc + (o.real - metaCalculada);
+      }, 0);
       const totalBonusOficina = (oficina.ordensDetalhadas || []).reduce((acc, o) => {
         const vUnit = o.real > 0 ? (o.valor / o.real) : 0;
-        return acc + ((o.real - (o.esperado * 0.98)) * vUnit);
+        const metaCalculada = o.meta98 ?? (o.semPerda ? o.esperado : o.esperado * 0.98);
+        return acc + ((o.real - metaCalculada) * vUnit);
       }, 0);
 
       return `
@@ -356,7 +360,7 @@ export class Financeiro implements OnInit {
                 <span>${this.formatCurrency(totalGeralLote)}</span>
               </div>
               <div class="rules-text">
-                * O cálculo de bônus/ônus considera a margem de 2% sobre a folha original. | Gerado em: ${new Date().toLocaleString('pt-BR')}
+                * O cálculo de bônus/ônus considera a margem de 2% sobre a folha original (salvo exceções sem perda). | Gerado em: ${new Date().toLocaleString('pt-BR')}
               </div>
             </div>
           </div>
